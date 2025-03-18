@@ -2,6 +2,7 @@
 FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
 
 ENV PYTHON_VERSION=3.10
+ENV PORT=8080
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
@@ -22,14 +23,14 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 # Copy the requirements.txt file
 COPY requirements.txt requirements.txt
 
-# Install any needed packages specified in requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Install aiohttp for health checks
+RUN pip3 install --no-cache-dir -r requirements.txt aiohttp
 
 # Copy the rest of your application's code
 COPY . .
 
-# Make port 8765 available to the world outside this container
-EXPOSE 8765
+# Make ports available to the world outside this container
+EXPOSE 8080 8765
 
 # Define environment variable
 ENV NAME VoiceStreamAI
@@ -38,4 +39,4 @@ ENV NAME VoiceStreamAI
 ENTRYPOINT ["python3", "-m", "src.main"]
 
 # Provide a default command (can be overridden at runtime)
-CMD ["--host", "0.0.0.0", "--port", "8765"]
+CMD ["--host", "0.0.0.0", "--port", "8765", "--http-port", "8080"]

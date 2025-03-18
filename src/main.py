@@ -2,12 +2,15 @@ import argparse
 import asyncio
 import json
 import logging
+from aiohttp import web
 
 from src.asr.asr_factory import ASRFactory
 from src.vad.vad_factory import VADFactory
 
 from .server import Server
 
+async def health_check(request):
+    return web.Response(text='OK', status=200)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -67,8 +70,22 @@ def parse_args():
         choices=["debug", "info", "warning", "error"],
         help="Logging level: debug, info, warning, error. default: error",
     )
+    parser.add_argument(
+        "--http-port",
+        type=int,
+        default=8080,
+        help="Port for the HTTP health check server",
+    )
     return parser.parse_args()
 
+async def start_health_check_server(host, port):
+    app = web.Application()
+    app.router.add_get('/health', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host, port)
+    await site.start()
+    logging.info(f"Health check HTTP server started on {host}:{port}")
 
 def main():
     args = parse_args()
@@ -97,9 +114,10 @@ def main():
         keyfile=args.keyfile,
     )
 
-    asyncio.get_event_loop().run_until_complete(server.start())
-    asyncio.get_event_loop().run_forever()
-
+    loop = asyncio.get_event_loop()
+    loop.create_task(start_health_check_server(args.host, args.http_port))
+    loop.create_task(server.start())
+    loop.run_forever()
 
 if __name__ == "__main__":
     main()
